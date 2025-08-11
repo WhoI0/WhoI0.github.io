@@ -3,15 +3,17 @@ import webbrowser
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import (
-    KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, ReplyKeyboardRemove
+    KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 )
 
 API_TOKEN = "8410930612:AAFGx_FrZYy-HEtZ-IqDbh_kJ65pZxs5Ass"
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # Хранилище "перекурщиков"
 smokers = []
+
 
 def show_smokers_on_map(smokers_list):
     """Создаёт HTML-карту с перекурщиками и открывает её."""
@@ -57,8 +59,14 @@ def show_smokers_on_map(smokers_list):
 async def start_handler(message: types.Message):
     # Кнопка для отправки геолокации
     button_geo = KeyboardButton(text="🚬 Выйти на перекур", request_location=True)
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(button_geo)
-    await message.answer("Нажми кнопку, чтобы выйти на перекур", reply_markup=keyboard)
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[button_geo]],
+        resize_keyboard=True
+    )
+    await message.answer(
+        "Нажми кнопку, чтобы выйти на перекур 🚬",
+        reply_markup=keyboard
+    )
 
 
 @dp.message(Command("map"))
@@ -77,13 +85,17 @@ async def location_handler(message: types.Message):
         lat = message.location.latitude
         lon = message.location.longitude
         smokers.append({"name": message.from_user.first_name, "lat": lat, "lon": lon})
-        await message.answer(f"Ты отмечен на перекуре! 🚬\nВсего сейчас на перекуре: {len(smokers)}", reply_markup=ReplyKeyboardRemove())
+        await message.answer(
+            f"Ты отмечен на перекуре! 🚬\nВсего сейчас на перекуре: {len(smokers)}",
+            reply_markup=ReplyKeyboardRemove()
+        )
     else:
         await message.answer("Если хочешь выйти на перекур, нажми кнопку с геолокацией!")
 
 
 async def main():
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
