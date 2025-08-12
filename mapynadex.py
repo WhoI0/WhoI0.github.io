@@ -1,53 +1,80 @@
-import webbrowser
+# server.py
+import time
+from typing import List
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import sqlite3
+import os
 
+DB_FILE = os.getenv("SMOKERS_DB", "smokers.db")
+EXPIRE_SECONDS = 10 * 60  # 10 минут
 
-def show_smokers_on_map(smokers):
-    """
-    smokers: список словарей с координатами и именами
-    пример: [
-        {"name": "Иван", "lat": 55.751244, "lon": 37.618423},
-        {"name": "Ольга", "lat": 55.760244, "lon": 37.620423}
-    ]
-    """
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8" />
-        <title>Карта перекуров</title>
-        <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
-        <script type="text/javascript">
-            ymaps.ready(init);
-            function init() {{
-                var map = new ymaps.Map("map", {{
-                    center: [{smokers[0]['lat']}, {smokers[0]['lon']}],
-                    zoom: 15
-                }});
+app = FastAPI(title="Smokers backend")
 
-                {"".join([f"map.geoObjects.add(new ymaps.Placemark([{s['lat']}, {s['lon']}], {{balloonContent: '{s['name']} на перекуре'}}));" for s in smokers])}
-            }}
-        </script>
-        <style>
-            html, body, #map {{ width: 100%; height: 100%; margin: 0; padding: 0; }}
-        </style>
-    </head>
-    <body>
-        <div id="map"></div>
-    </body>
-    </html>
-    """
+class Report(BaseModel):
+    user_id: int
+    first_name: str | None = None
+    lat: float
+    lon: float
+    ttl: int | None = None  # optional: custom TTL seconds
 
-    with open("smokers_map.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS smokers (
+        user_id INTEGER PRIMARY KEY,
+        first_name TEXT,
+        lat REAL,
+        lon REAL,
+        ts INTEGER
+    )
+    """)
+    conn.commit()
+    conn.close()
 
-    webbrowser.open("smokers_map.html")
+def upsert_position(user_id: int, first_name: str, lat: float, lon: float):
+    ts = int(time.time())
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("""
+    INSERT INTO smokers(user_id, first_name, lat, lon, ts) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET first_name=excluded.first_name, lat=excluded.lat, lon=excluded.lon, ts=excluded.ts
+    """, (user_id, first_name, lat, lon, ts))
+    conn.commit()
+    conn.close()
 
+def get_active_smokers() -> List[dict]:
+    cutoff = int(time.time()) - EXPIRE_SECONDS
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("SELECT user_id, first_name, lat, lon, ts FROM smokers WHERE ts >= ?", (cutoff,))
+    rows = cur.fetchall()
+    conn.close()
+    return [{"user_id": r[0], "first_name": r[1], "lat": r[2], "lon": r[3], "ts": r[4]} for r in rows]
 
-# Пример данных
-smokers_data = [
-    {"name": "Иван", "lat": 55.751244, "lon": 37.618423},
-    {"name": "Ольга", "lat": 55.760244, "lon": 37.620423},
-    {"name": "Пётр", "lat": 55.7558, "lon": 37.6173}
-]
+def cleanup_old():
+    cutoff = int(time.time()) - EXPIRE_SECONDS
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM smokers WHERE ts < ?", (cutoff,))
+    conn.commit()
+    conn.close()
 
-show_smokers_on_map(smokers_data)
+@app.on_event("startup")
+def startup():
+    init_db()
+
+@app.post("/report")
+async def report_pos(r: Report):
+    # basic validation
+    if not (-90 <= r.lat <= 90 and -180 <= r.lon <= 180):
+        raise HTTPException(400, "Invalid coordinates")
+    upsert_position(r.user_id, r.first_name or "", r.lat, r.lon)
+    cleanup_old()
+    return {"status": "ok"}
+
+@app.get("/smokers")
+async def smokers_list():
+    cleanup_old()
+    return get_active_smokers()

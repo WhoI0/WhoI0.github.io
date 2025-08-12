@@ -1,40 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Перекур Mini App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моя Mini App</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <h2>Нажми кнопку, чтобы выйти на перекур</h2>
-  <button id="smokeBtn">Хочу перекурить</button>
-  <p id="status"></p>
-
-  <script src="https://whoi0.github.io/"></script>
-  <script>
-    const tg = window.Telegram.WebApp;
-    const status = document.getElementById('status');
-
-    document.getElementById('smokeBtn').addEventListener('click', () => {
-      if (!navigator.geolocation) {
-        status.textContent = "Геолокация не поддерживается браузером.";
-        return;
-      }
-      status.textContent = "Определяем ваше местоположение...";
-
-      navigator.geolocation.getCurrentPosition(position => {
-        const data = {
-          action: "smoke_break",
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-          timestamp: Date.now()
-        };
-
-        tg.sendData(JSON.stringify(data));
-        status.textContent = "Сигнал отправлен боту. Спасибо!";
-      }, error => {
-        status.textContent = "Не удалось определить местоположение.";
-      });
-    });
-  </script>
+    <div class="container">
+        <h1>Привет, Telegram! 👋</h1>
+        <button id="btn-alert">Нажми меня</button>
+    </div>
+    <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+{
+    "name": "Моя Mini App",
+    "short_name": "MiniApp",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0088cc"
+}

@@ -1,17 +1,17 @@
-//let tg = window.Telegram.WebApp;
-//
-//// Показываем имя пользователя из Telegram
-//tg.expand();
-//document.getElementById("user").innerText =
-//    tg.initDataUnsafe.user
-//    ? `Ваше имя: ${tg.initDataUnsafe.user.first_name}`
-//    : "Пользователь не найден";
-//
-//// Кнопка отправки данных в бота
-//document.getElementById("sendData").addEventListener("click", () => {
-//    let data = {
-//        action: "test_action",
-//        value: "Hello from Mini App"
-//    };
-//    tg.sendData(JSON.stringify(data));
-//});
+// Инициализация Telegram WebApp
+const tg = window.Telegram.WebApp;
+
+// Развернуть приложение на весь экран (опционально)
+tg.expand();
+
+// Обработчик кнопки
+document.getElementById("btn-alert").addEventListener("click", () => {
+    tg.showAlert("Кнопка нажата!");
+});
+
+// Получение данных пользователя (если нужно)
+const user = tg.initDataUnsafe?.user;
+console.log("User:", user);
+
+// Закрыть приложение (например, после выполнения действия)
+// tg.close();
